@@ -1,0 +1,7 @@
+ingress:
+  hosts:
+    - beta.weather.mito.ai
+  tls:
+    - secretName: beta-weather-mito-ai-tls
+      hosts:
+        - beta.weather.mito.ai

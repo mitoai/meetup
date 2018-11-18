@@ -1,0 +1,49 @@
+def image = "eu.gcr.io/ntnu-smartmedia/weather"
+def projectDir = "Kubernetes-Trondheim/2018-09-19"
+defaultPodTemplate {
+  podTemplate(
+      label: 'go',
+      containers: [
+        containerTemplate(
+          name: 'go',
+          image: 'golang:1.10',
+          ttyEnabled: true,
+          command: 'cat',
+          )
+      ]) {
+        node('go') {
+          def scmVars
+          stage("Checkout source") {
+            scmVars = checkout scm
+          }
+          stage("Get dependencies") {
+              container('go') {
+                  sh "cd $projectDir && go get -d -t -v ."
+              }
+          }
+          stage("Build") {
+              container('go') {
+                  sh "cd $projectDir && GOOS=linux GOARCH=amd64 go build -o build/weather-server ./server.go"
+               }
+          }
+          if (scmVars.GIT_BRANCH == 'master') {
+            stage("Build docker") {
+              sh 'gcloud auth configure-docker -q'
+              sh "cd $projectDir && docker build . -t ${image}:${scmVars.GIT_COMMIT}"
+              sh "docker push ${image}:${scmVars.GIT_COMMIT}"
+            }
+            stage("Deploy") {
+              sh 'gcloud container clusters get-credentials meetup'
+              sh "cd $projectDir && helm lint helm/*"
+              sh "cd $projectDir && helm upgrade \
+                    -i \
+                    --wait \
+                    --set image.repository=${image} \
+                    --set image.tag=${scmVars.GIT_COMMIT} \
+                    weather \
+                    helm/weather"
+            }
+          }
+        }
+      }
+}

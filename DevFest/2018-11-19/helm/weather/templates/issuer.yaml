@@ -1,0 +1,13 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: certmanager.k8s.io/v1alpha1
+kind: Issuer
+metadata:
+  name: {{ include "weather.fullname" . }}
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: infrastructure@mito.ai
+    privateKeySecretRef:
+      name: {{ include "weather.fullname" . }}-iss
+    http01: {}
+{{- end -}}
